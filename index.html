@@ -1069,6 +1069,57 @@ function findItem(catId, itemId){
   return item ? { cat, item } : null;
 }
 
+// Update hanya bagian item yang berubah. Hindari membangun ulang seluruh <main>
+// saat checkbox/qty disentuh agar posisi layar dan animasi CSS tetap stabil.
+function updateItemRowDOM(catId, itemId){
+  const found = findItem(catId, itemId);
+  if(!found) return;
+
+  const { cat, item } = found;
+  const itemKey = catId + ':' + itemId;
+  const row = mainEl.querySelector(`.item[data-item-id="${CSS.escape(itemId)}"]`);
+  if(!row) return;
+
+  const qtyVal = item.qty ? Number(item.qty) : 0;
+  row.classList.toggle('checked', !!item.checked);
+
+  const checkBtn = row.querySelector('[data-check]');
+  if(checkBtn) checkBtn.setAttribute('aria-label', `Tandai ${escapeHTML(item.name)}`);
+
+  const qtyEl = row.querySelector('.qty-val');
+  if(qtyEl) qtyEl.textContent = qtyVal;
+
+  // Harga hanya muncul jika item dicentang dan qty > 0.
+  const existingPrice = row.querySelector('.item-row-price');
+  const shouldShowPrice = !!item.checked && qtyVal > 0;
+  if(shouldShowPrice && !existingPrice){
+    const priceWrap = document.createElement('div');
+    priceWrap.className = 'item-row-price';
+    priceWrap.innerHTML = `
+      <label for="price-${itemKey}">Harga</label>
+      <input type="text" inputmode="numeric" class="price-input" id="price-${itemKey}" data-price="${itemKey}" value="${formatRupiah(item.price)}" placeholder="Rp 0">`;
+    row.appendChild(priceWrap);
+  } else if(!shouldShowPrice && existingPrice){
+    existingPrice.remove();
+  } else if(existingPrice){
+    const priceInput = existingPrice.querySelector('[data-price]');
+    if(priceInput && document.activeElement !== priceInput){
+      priceInput.value = formatRupiah(item.price);
+    }
+  }
+
+  // Perbarui hitungan kategori tanpa render ulang.
+  const head = mainEl.querySelector(`.category[data-cat-id="${CSS.escape(catId)}"] .category-head`);
+  if(head){
+    const visibleItems = hideOptional ? cat.items.filter(i => !i.optional) : cat.items;
+    const checkedVisible = visibleItems.filter(i => i.checked).length;
+    const countEl = head.querySelector('.category-count');
+    if(countEl) countEl.textContent = `${checkedVisible}/${visibleItems.length}`;
+  }
+
+  updateProgressBar();
+}
+
 function addNewItem(catId){
   const input = mainEl.querySelector(`[data-add-item="${catId}"]`);
   const name = input.value.trim();
@@ -1137,7 +1188,8 @@ mainEl.addEventListener('click', (e) => {
     if(found){
       found.item.checked = !found.item.checked;
       if(!found.item.checked){ found.item.qty = ''; found.item.price = ''; }
-      saveCurrent(); render();
+      saveCurrent();
+      updateItemRowDOM(catId, itemId);
     }
     return;
   }
@@ -1158,7 +1210,8 @@ mainEl.addEventListener('click', (e) => {
       q = Math.max(0, q - 1);
       found.item.qty = q ? String(q) : '';
       if(!q){ found.item.price = ''; }
-      saveCurrent(); render();
+      saveCurrent();
+      updateItemRowDOM(catId, itemId);
     }
     return;
   }
@@ -1171,7 +1224,8 @@ mainEl.addEventListener('click', (e) => {
       let q = parseInt(found.item.qty, 10) || 0;
       q = Math.min(QTY_MAX, q + 1);
       found.item.qty = String(q);
-      saveCurrent(); render();
+      saveCurrent();
+      updateItemRowDOM(catId, itemId);
     }
     return;
   }

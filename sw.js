@@ -1,8 +1,8 @@
 /* Service worker untuk Belanja Logistik Trip Cito */
-const CACHE_NAME = 'logistik-trip-cito-v1';
+const CACHE_NAME = 'logistik-trip-cito-v2';
 
 const APP_SHELL = [
-  './logistik-trip-cito.html',
+  './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -49,7 +49,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // Offline & tidak ada di cache: untuk navigasi halaman, kembalikan app shell
           if(req.mode === 'navigate'){
-            return caches.match('./logistik-trip-cito.html');
+            return caches.match('./index.html');
           }
         });
     })

@@ -2,7 +2,7 @@
   "name": "Belanja Logistik Trip Cito",
   "short_name": "Logistik Cito",
   "description": "Checklist logistik perjalanan Belanja Logistik Trip Cito dengan riwayat trip, export PDF, dan penyimpanan offline",
-  "start_url": "./logistik-trip-cito.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
