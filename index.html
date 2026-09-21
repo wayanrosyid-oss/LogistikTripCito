@@ -654,6 +654,53 @@
     .sheet-backdrop.show .sheet-action, .filter-popover.show .filter-option, .edit-row,
     .trip-name-input:focus, .search-input:focus, .price-input:focus, .add-item-input:focus{ animation: none; }
   }
+
+  /* ===== Dialog kustom (pengganti confirm/alert bawaan browser) ===== */
+  .dlg-backdrop{
+    position: fixed; inset: 0; z-index: 400;
+    display:flex; align-items:center; justify-content:center; padding: 20px;
+    background: rgba(2,10,12,.62);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .dlg-backdrop.show{ opacity: 1; visibility: visible; pointer-events: auto; }
+  .dlg{
+    width: 100%; max-width: 340px; text-align: center;
+    background: linear-gradient(180deg, rgba(14,44,48,.96), rgba(8,30,33,.98));
+    border: 1px solid var(--line-strong); border-radius: 26px;
+    padding: 24px 20px 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.03) inset;
+    transform: translateY(18px) scale(.92); opacity: 0;
+    transition: transform .4s cubic-bezier(.34,1.45,.64,1), opacity .2s ease;
+  }
+  .dlg-backdrop.show .dlg{ transform: none; opacity: 1; }
+  .dlg-icon{
+    width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 18px;
+    display:flex; align-items:center; justify-content:center; font-size: 26px;
+    background: var(--accent-soft, rgba(37,207,196,.14)); border: 1px solid var(--line);
+  }
+  .dlg.danger .dlg-icon{ background: var(--red-soft); border-color: rgba(255,138,128,.25); }
+  .dlg-backdrop.show .dlg-icon{ animation: dlgIcon .55s cubic-bezier(.34,1.56,.64,1) .08s both; }
+  @keyframes dlgIcon{ from{ transform: scale(.4) rotate(-20deg); opacity:0; } to{ transform:none; opacity:1; } }
+  .dlg-title{ margin: 0 0 8px; font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .dlg-msg{ margin: 0 0 20px; font-size: 14px; line-height: 1.5; color: var(--ink-soft); word-break: break-word; }
+  .dlg-actions{ display:flex; gap:10px; }
+  .dlg-btn{
+    flex: 1; border: none; border-radius: 14px; padding: 13px 10px;
+    font-family: var(--font-body); font-size: 14.5px; font-weight: 700; cursor: pointer;
+    transition: transform .15s cubic-bezier(.34,1.56,.64,1), filter .15s ease;
+  }
+  .dlg-btn:active{ transform: scale(.94); }
+  .dlg-btn:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
+  .dlg-cancel{ background: rgba(255,255,255,.08); color: var(--ink); }
+  .dlg-ok{ background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #03201e; box-shadow: 0 8px 22px var(--accent-soft); }
+  .dlg.danger .dlg-ok{ background: linear-gradient(135deg, #ff9a90, #ff5d5d); color: #2a0606; box-shadow: 0 8px 22px rgba(255,93,93,.28); }
+  @media (prefers-reduced-motion: reduce){
+    .dlg, .dlg-backdrop{ transition: opacity .15s ease; }
+    .dlg{ transform: none; }
+    .dlg-backdrop.show .dlg-icon{ animation: none; }
+  }
 </style>
 </head>
 <body data-trip-type="privat">
@@ -1515,6 +1562,82 @@ const FireBar = (() => {
   return { set, flare };
 })();
 
+/* ---------- DIALOG KUSTOM (pengganti confirm/alert bawaan browser) ---------- */
+const Dialog = (() => {
+  let backdrop, box, iconEl, titleEl, msgEl, okBtn, cancelBtn;
+  let resolver = null, lastFocus = null;
+
+  function build(){
+    backdrop = document.createElement('div');
+    backdrop.className = 'dlg-backdrop';
+    backdrop.setAttribute('aria-hidden', 'true');
+    backdrop.innerHTML = `
+      <div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-msg">
+        <div class="dlg-icon" aria-hidden="true"></div>
+        <h2 class="dlg-title" id="dlg-title"></h2>
+        <p class="dlg-msg" id="dlg-msg"></p>
+        <div class="dlg-actions">
+          <button type="button" class="dlg-btn dlg-cancel"></button>
+          <button type="button" class="dlg-btn dlg-ok"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    box = backdrop.querySelector('.dlg');
+    iconEl = backdrop.querySelector('.dlg-icon');
+    titleEl = backdrop.querySelector('.dlg-title');
+    msgEl = backdrop.querySelector('.dlg-msg');
+    okBtn = backdrop.querySelector('.dlg-ok');
+    cancelBtn = backdrop.querySelector('.dlg-cancel');
+
+    okBtn.addEventListener('click', () => close(true));
+    cancelBtn.addEventListener('click', () => close(false));
+    backdrop.addEventListener('click', (e) => { if(e.target === backdrop) close(false); });
+    document.addEventListener('keydown', (e) => {
+      if(!backdrop.classList.contains('show')) return;
+      if(e.key === 'Escape'){ e.preventDefault(); close(false); return; }
+      if(e.key === 'Tab'){
+        const btns = [cancelBtn, okBtn].filter(b => b.style.display !== 'none');
+        const i = btns.indexOf(document.activeElement);
+        e.preventDefault();
+        btns[(i + (e.shiftKey ? btns.length - 1 : 1)) % btns.length].focus();
+      }
+    });
+  }
+
+  function close(result){
+    if(!backdrop) return;
+    backdrop.classList.remove('show');
+    backdrop.setAttribute('aria-hidden', 'true');
+    const r = resolver; resolver = null;
+    if(lastFocus && document.contains(lastFocus)){ try{ lastFocus.focus({ preventScroll: true }); }catch(e){} }
+    if(r) r(result);
+  }
+
+  /* ask({ icon, title, message, confirmText, cancelText, danger, hideCancel }) -> Promise<boolean> */
+  function ask(o){
+    if(!backdrop) build();
+    if(resolver){ const r = resolver; resolver = null; r(false); }
+    const { icon = '❓', title = '', message = '', confirmText = 'Oke', cancelText = 'Batal', danger = false, hideCancel = false } = o || {};
+    box.classList.toggle('danger', !!danger);
+    iconEl.textContent = icon;
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    okBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+    cancelBtn.style.display = hideCancel ? 'none' : '';
+    return new Promise((resolve) => {
+      resolver = resolve;
+      lastFocus = document.activeElement;
+      backdrop.classList.add('show');
+      backdrop.setAttribute('aria-hidden', 'false');
+      // Aksi berbahaya: fokus awal di "Batal" supaya tidak terhapus karena salah tekan Enter.
+      (danger && !hideCancel ? cancelBtn : okBtn).focus({ preventScroll: true });
+    });
+  }
+  return { ask };
+})();
+function askDialog(o){ return Dialog.ask(o); }
+
 /* ---------- MAIN RENDER DISPATCH ---------- */
 function render(){
   // Preserve scroll position across re-renders (fixes "jump to top" on checkbox tap etc.)
@@ -1875,11 +1998,19 @@ mainEl.addEventListener('click', (e) => {
   if(catDeleteBtn){
     const catId = catDeleteBtn.dataset.catDelete;
     const cat = categories.find(c => c.id === catId);
-    if(cat && confirm(`Hapus kategori "${cat.name}" beserta semua itemnya?`)){
-      FX.rowOut(catDeleteBtn.closest('.category')).then(() => {
-        categories = categories.filter(c => c.id !== catId);
-        saveCurrent();
-        render();
+    if(cat){
+      const catEl = catDeleteBtn.closest('.category');
+      const n = cat.items.length;
+      askDialog({
+        icon: '🗑️', danger: true, title: 'Hapus kategori?', confirmText: 'Hapus',
+        message: n ? `Kategori "${cat.name}" beserta ${n} barang di dalamnya akan dihapus.` : `Kategori "${cat.name}" akan dihapus.`
+      }).then((ok) => {
+        if(!ok) return;
+        FX.rowOut(catEl).then(() => {
+          categories = categories.filter(c => c.id !== catId);
+          saveCurrent();
+          render();
+        });
       });
     }
     return;
@@ -1930,11 +2061,18 @@ mainEl.addEventListener('click', (e) => {
     const [catId, itemId] = removeBtn.dataset.remove.split(':');
     const cat = categories.find(c => c.id === catId);
     const item = cat && cat.items.find(i => i.id === itemId);
-    if(cat && item && confirm(`Hapus "${item.name}"?`)){
-      FX.rowOut(removeBtn.closest('.item')).then(() => {
-        cat.items = cat.items.filter(i => i.id !== itemId);
-        saveCurrent();
-        render();
+    if(cat && item){
+      const rowEl = removeBtn.closest('.item');
+      askDialog({
+        icon: '🗑️', danger: true, title: 'Hapus barang?', confirmText: 'Hapus',
+        message: `"${item.name}" akan dihapus dari daftar.`
+      }).then((ok) => {
+        if(!ok) return;
+        FX.rowOut(rowEl).then(() => {
+          cat.items = cat.items.filter(i => i.id !== itemId);
+          saveCurrent();
+          render();
+        });
       });
     }
     return;
@@ -2080,11 +2218,18 @@ function renderHistory(){
       e.stopPropagation();
       const id = btn.dataset.histDelete;
       const entry = history.find(h => h.id === id);
-      if(entry && confirm(`Hapus riwayat "${entry.tripName || '(Tanpa nama)'}"?`)){
-        FX.rowOut(btn.closest('.history-card')).then(() => {
-          history = history.filter(h => h.id !== id);
-          saveHistory();
-          render();
+      if(entry){
+        const cardEl = btn.closest('.history-card');
+        askDialog({
+          icon: '🗑️', danger: true, title: 'Hapus riwayat?', confirmText: 'Hapus',
+          message: `Riwayat "${entry.tripName || '(Tanpa nama)'}" akan dihapus permanen.`
+        }).then((ok) => {
+          if(!ok) return;
+          FX.rowOut(cardEl).then(() => {
+            history = history.filter(h => h.id !== id);
+            saveHistory();
+            render();
+          });
         });
       }
     });
@@ -2311,8 +2456,12 @@ moreSheetBackdrop.addEventListener('click', (e) => {
 });
 function closeMoreSheet(){ moreSheetBackdrop.classList.remove('show'); }
 
-document.getElementById('share-btn').addEventListener('click', () => {
-  if(!confirm('Reset semua centang pada checklist ini? (barang tetap ada, status dicentang, qty & harga direset)')) return;
+document.getElementById('share-btn').addEventListener('click', async () => {
+  const ok = await askDialog({
+    icon: '🔄', title: 'Reset semua centang?', confirmText: 'Reset',
+    message: 'Semua centang, jumlah, dan harga dikosongkan. Barang dan kategori tetap ada.'
+  });
+  if(!ok) return;
   FX.resetBurst();
   categories.forEach(cat => cat.items.forEach(it => { it.checked = false; it.qty = ''; it.price = ''; }));
   saveCurrent();
@@ -2360,16 +2509,22 @@ document.getElementById('import-json-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try{
       const data = JSON.parse(reader.result);
       if(!data || !Array.isArray(data.categories)){
-        alert('File tidak valid. Pastikan ini file backup dari aplikasi Belanja Logistik Trip Cito.');
+        await askDialog({
+          icon: '⚠️', danger: true, hideCancel: true, title: 'File tidak valid', confirmText: 'Mengerti',
+          message: 'Pastikan ini file backup dari aplikasi Belanja Logistik Trip Cito.'
+        });
         return;
       }
       let mergeHistory = false;
       if(data.history && Array.isArray(data.history) && data.history.length){
-        mergeHistory = confirm('File ini juga berisi riwayat. Ketuk OK untuk GABUNG dengan riwayat yang ada sekarang, atau Batal untuk hanya memuat checklist-nya saja.');
+        mergeHistory = await askDialog({
+          icon: '📥', title: 'Gabungkan riwayat?', confirmText: 'Gabungkan', cancelText: 'Hanya checklist',
+          message: 'File ini juga berisi riwayat trip. Gabungkan dengan riwayat yang ada sekarang, atau muat checklist-nya saja?'
+        });
       }
 
       tripName = data.tripName || '';
@@ -2390,7 +2545,10 @@ document.getElementById('import-json-input').addEventListener('change', (e) => {
       render();
       showToast('Data berhasil dimuat');
     }catch(err){
-      alert('Gagal membaca file JSON: ' + err.message);
+      await askDialog({
+        icon: '⚠️', danger: true, hideCancel: true, title: 'Gagal membaca file', confirmText: 'Mengerti',
+        message: err.message
+      });
     }finally{
       e.target.value = '';
     }
@@ -2398,8 +2556,12 @@ document.getElementById('import-json-input').addEventListener('change', (e) => {
   reader.readAsText(file);
 });
 
-document.getElementById('finish-btn').addEventListener('click', () => {
-  if(!confirm('Selesai checklist ini? Checklist akan dipindah ke Riwayat, lalu daftar saat ini direset (centang, qty & nama trip dikosongkan — kategori & item tetap).')) return;
+document.getElementById('finish-btn').addEventListener('click', async () => {
+  const ok = await askDialog({
+    icon: '🏁', title: 'Selesaikan checklist?', confirmText: 'Selesai',
+    message: 'Checklist ini dipindah ke Riwayat, lalu daftar di sini dikosongkan (centang, jumlah, harga, dan nama trip). Kategori dan barang tetap ada.'
+  });
+  if(!ok) return;
 
   const snapshot = {
     id: uid(),

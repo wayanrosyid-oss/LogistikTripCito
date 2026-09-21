@@ -1,5 +1,5 @@
 /* Service worker untuk Belanja Logistik Trip Cito */
-const CACHE_NAME = 'logistik-trip-cito-v5';
+const CACHE_NAME = 'logistik-trip-cito-v6';
 
 const APP_SHELL = [
   './index.html',
