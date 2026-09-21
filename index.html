@@ -142,20 +142,40 @@
   @media (min-width: 640px){ .scroll-top-panel{ padding-left:0; padding-right:0; } }
 
   .trip-type-row{ margin-bottom: 12px; }
-  .trip-type-toggle{
-    display:flex; gap:4px; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 15px;
+  /* ===== Filter Switch (segmented radio + sliding highlight) ===== */
+  .filter-switch{
+    --pad: 4px;
+    position: relative; display: flex; align-items: stretch;
+    padding: var(--pad); border-radius: 16px;
+    background: rgba(255,255,255,.05);
     border: 1px solid var(--line);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.28);
+    isolation: isolate;
   }
-  .trip-type-btn{
-    flex:1; border:none; background:transparent; padding: 10px 0;
-    font-size: 13px; font-weight: 600; color: var(--ink-soft);
-    border-radius: 11px; cursor:pointer; font-family: var(--font-body);
+  .filter-switch.pill{ border-radius: 999px; }
+  .filter-switch input{ position:absolute; opacity:0; width:0; height:0; margin:0; pointer-events:none; }
+  .filter-switch .option{
+    flex: 1; position: relative; z-index: 2;
     display:flex; align-items:center; justify-content:center; gap:6px;
-    transition: .2s;
+    padding: 10px 0; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+    font-family: var(--font-body); cursor:pointer; user-select:none; -webkit-user-select:none;
+    border-radius: 12px; transition: color .25s ease;
   }
-  .trip-type-btn svg{ width:14px; height:14px; }
-  .trip-type-btn[data-type="privat"].active{ background: linear-gradient(135deg,#51e3d8,#16a99f); color:#03201e; box-shadow: 0 8px 20px rgba(22,169,159,.25); }
-  .trip-type-btn[data-type="open"].active{ background: linear-gradient(135deg,#7cf0af,#1f9d6b); color:#03201e; box-shadow: 0 8px 20px rgba(31,157,107,.25); }
+  .filter-switch.pill .option{ font-size: 13.5px; border-radius: 999px; }
+  .filter-switch .option svg{ width:14px; height:14px; }
+  .filter-switch input:checked + .option{ color:#03201e; }
+  .filter-switch input:not(:checked) + .option:hover{ color: var(--ink); }
+  .filter-switch .background{
+    position:absolute; z-index:1; top: var(--pad); bottom: var(--pad); left: var(--pad);
+    width: calc((100% - var(--pad) * 2) / 2);
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 0 16px var(--glow-2), 0 6px 18px var(--accent-soft);
+    transition: transform .35s cubic-bezier(.4,0,.2,1), background .3s ease, box-shadow .3s ease;
+  }
+  .filter-switch.pill .background{ border-radius: 999px; }
+  .filter-switch input:nth-of-type(2):checked ~ .background{ transform: translateX(100%); }
+  .filter-switch input:focus-visible + .option{ outline: 2px solid var(--accent); outline-offset: -2px; }
 
   .trip-name-row{ margin-bottom: 14px; padding: 20px; border-radius: 23px;
     background: rgba(8,31,34,.72); border: 1px solid var(--accent-soft, var(--line));
@@ -192,19 +212,8 @@
     .trip-name-field.date-field{ flex:1 1 auto; }
   }
 
-  /* Tabs */
-  .tabs{
-    display:flex; gap:4px; margin-bottom: 10px;
-    background: rgba(255,255,255,0.05); padding: 4px; border-radius: 999px;
-    border: 1px solid var(--line);
-  }
-  .tab-btn{
-    flex:1; border:none; background:transparent; padding: 10px 0;
-    font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
-    border-radius: 999px; cursor:pointer; font-family: var(--font-body);
-    transition: .2s;
-  }
-  .tab-btn.active{ background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #03201e; box-shadow: 0 8px 20px var(--accent-soft); transition: background .3s ease; }
+  /* Tabs (memakai .filter-switch.pill) */
+  .tabs{ margin-bottom: 10px; }
 
   .progress-wrap{ margin-bottom: 0; }
   .progress-total-price{
@@ -260,12 +269,19 @@
   }
   .filter-option:active{ background: rgba(255,255,255,.06); }
   .filter-option-check{
-    width:18px; height:18px; border-radius:5px; border:2px solid var(--line-strong);
-    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:6px; border:2px solid rgba(86,228,165,.4);
+    background: rgba(0,0,0,.25); flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    transition: background .2s ease, border-color .2s ease, box-shadow .25s ease;
   }
-  .filter-option-check svg{ width:11px; height:11px; opacity:0; }
-  .filter-option.on .filter-option-check{ background: var(--green); border-color: var(--green-deep); }
-  .filter-option.on .filter-option-check svg{ opacity:1; }
+  .filter-option-check svg{
+    width:12px; height:12px; opacity:0; stroke-dasharray:24; stroke-dashoffset:24;
+    transition: stroke-dashoffset .25s ease .05s, opacity .1s ease;
+  }
+  .filter-option.on .filter-option-check{
+    background: var(--green); border-color: var(--green);
+    box-shadow: 0 0 12px rgba(86,228,165,.6), 0 0 24px rgba(86,228,165,.25);
+  }
+  .filter-option.on .filter-option-check svg{ opacity:1; stroke-dashoffset:0; }
 
   /* ===== Main list ===== */
   main{ padding: 8px 14px 12px; max-width: 640px; margin: 0 auto; }
@@ -315,17 +331,43 @@
   .item.hidden{ display:none; }
   .item-row-main{ display:flex; align-items:center; gap:11px; }
 
-  .item-check{
-    width: 25px; height: 25px; flex-shrink: 0; border-radius: 8px; border: 2px solid var(--line-strong);
-    background: rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; cursor:pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+  /* ===== Neon Checkbox ===== */
+  .checkbox-wrapper{
+    position: relative; display:inline-flex; flex-shrink:0; cursor:pointer;
+    -webkit-user-select:none; user-select:none;
   }
-  .item-check svg{ width: 14px; height: 14px; opacity: 0; transform: scale(0.6); transition: opacity 0.12s ease, transform 0.12s ease; }
-  .item.checked .item-check{ background: var(--green); border-color: var(--green-deep); }
-  .item.checked .item-check svg{ opacity: 1; transform: scale(1); }
+  .checkbox-wrapper input{
+    position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; z-index:1;
+  }
+  .checkmark{
+    width: 26px; height: 26px; border-radius: 8px;
+    display:flex; align-items:center; justify-content:center;
+    color:#03201e;
+    border: 2px solid rgba(86,228,165,.4);
+    background: rgba(0,0,0,.25);
+    box-shadow: inset 0 0 6px rgba(86,228,165,.08);
+    transition: background .2s ease, border-color .2s ease, box-shadow .25s ease, transform .15s ease;
+  }
+  .checkmark svg{
+    width: 15px; height: 15px; opacity:0;
+    stroke-dasharray: 24; stroke-dashoffset: 24;
+    transition: stroke-dashoffset .25s ease .05s, opacity .1s ease;
+  }
+  .checkbox-wrapper:hover .checkmark{ border-color: var(--green); box-shadow: 0 0 10px rgba(86,228,165,.35); }
+  .checkbox-wrapper:active .checkmark{ transform: scale(.9); }
+  .checkbox-wrapper input:checked + .checkmark{
+    background: var(--green); border-color: var(--green);
+    box-shadow: 0 0 14px rgba(86,228,165,.65), 0 0 28px rgba(86,228,165,.28);
+  }
+  .checkbox-wrapper input:checked + .checkmark svg{ opacity:1; stroke-dashoffset:0; }
+  .checkbox-wrapper input:focus-visible + .checkmark{ outline: 2px solid var(--green); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce){
+    .checkmark, .checkmark svg, .filter-switch .background, .filter-switch .option{ transition: none; }
+  }
 
   .item-name{ flex: 1; font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none; min-width:0; word-break:break-word; }
   .item.checked .item-name{ color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+
 
   .plus-tag{
     font-size: 10px; font-weight: 700; color: var(--orange-deep); background: var(--orange-soft);
@@ -551,9 +593,12 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" id="tab-checklist">Checklist</button>
-    <button class="tab-btn" id="tab-history">Riwayat</button>
+  <div class="filter-switch pill tabs" id="tabSwitch">
+    <input checked id="tab-checklist" name="tabs" type="radio" />
+    <label class="option" for="tab-checklist">Checklist</label>
+    <input id="tab-history" name="tabs" type="radio" />
+    <label class="option" for="tab-history">Riwayat</label>
+    <span class="background"></span>
   </div>
 
   <div id="history-count-label" style="display:none; font-size:12.5px; color:var(--ink-soft); margin-top:2px;"></div>
@@ -594,15 +639,18 @@
 
 <div id="scroll-top-panel" class="scroll-top-panel">
   <div class="trip-type-row">
-    <div class="trip-type-toggle">
-      <button class="trip-type-btn active" data-type="privat" id="trip-type-privat">
+    <div class="filter-switch" id="tripTypeSwitch">
+      <input checked id="trip-type-privat" name="tripType" type="radio" />
+      <label class="option" for="trip-type-privat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         Privat Trip
-      </button>
-      <button class="trip-type-btn" data-type="open" id="trip-type-open">
+      </label>
+      <input id="trip-type-open" name="tripType" type="radio" />
+      <label class="option" for="trip-type-open">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/><path d="M12 2a15.3 15.3 0 000 20"/></svg>
         Open Trip
-      </button>
+      </label>
+      <span class="background"></span>
     </div>
   </div>
 
@@ -805,7 +853,7 @@ function escapeHTML(str){
   return div.innerHTML;
 }
 function checkIconSVG(){
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="#061417" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  return '<svg stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linejoin="round" stroke-linecap="round" stroke-width="3" d="M20 6L9 17L4 12"></path></svg>';
 }
 function trashSVG(){
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
@@ -843,8 +891,8 @@ function render(){
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
 
-  document.getElementById('tab-checklist').classList.toggle('active', activeTab === 'checklist');
-  document.getElementById('tab-history').classList.toggle('active', activeTab === 'history');
+  document.getElementById('tab-checklist').checked = activeTab === 'checklist';
+  document.getElementById('tab-history').checked = activeTab === 'history';
   document.getElementById('checklist-header-extra').style.display = activeTab === 'checklist' ? '' : 'none';
   document.getElementById('scroll-top-panel').style.display = activeTab === 'checklist' ? '' : 'none';
   document.getElementById('bottom-bar-checklist').style.display = activeTab === 'checklist' ? 'flex' : 'none';
@@ -1000,7 +1048,10 @@ function renderChecklist(){
       const qtyVal = item.qty ? Number(item.qty) : 0;
       row.innerHTML = `
         <div class="item-row-main">
-          <button class="item-check" data-check="${itemKey}" aria-label="Tandai ${escapeHTML(item.name)}">${checkIconSVG()}</button>
+          <label class="checkbox-wrapper">
+            <input type="checkbox" data-check="${itemKey}" ${item.checked ? 'checked' : ''} aria-label="Tandai ${escapeHTML(item.name)}" />
+            <span class="checkmark">${checkIconSVG()}</span>
+          </label>
           <span class="item-name" data-edit-name="${itemKey}">${escapeHTML(item.name)}${item.optional ? '<span class="plus-tag">+</span>' : ''}</span>
           <div class="qty-stepper">
             <span class="qty-btn" data-qty-dec="${itemKey}" aria-label="Kurangi jumlah">−</span>
@@ -1084,7 +1135,10 @@ function updateItemRowDOM(catId, itemId){
   row.classList.toggle('checked', !!item.checked);
 
   const checkBtn = row.querySelector('[data-check]');
-  if(checkBtn) checkBtn.setAttribute('aria-label', `Tandai ${escapeHTML(item.name)}`);
+  if(checkBtn){
+    checkBtn.setAttribute('aria-label', `Tandai ${escapeHTML(item.name)}`);
+    checkBtn.checked = !!item.checked;
+  }
 
   const qtyEl = row.querySelector('.qty-val');
   if(qtyEl) qtyEl.textContent = qtyVal;
@@ -1181,19 +1235,6 @@ mainEl.addEventListener('click', (e) => {
     return;
   }
 
-  const checkBtn = e.target.closest('[data-check]');
-  if(checkBtn){
-    const [catId, itemId] = checkBtn.dataset.check.split(':');
-    const found = findItem(catId, itemId);
-    if(found){
-      found.item.checked = !found.item.checked;
-      if(!found.item.checked){ found.item.qty = ''; found.item.price = ''; }
-      saveCurrent();
-      updateItemRowDOM(catId, itemId);
-    }
-    return;
-  }
-
   const nameTap = e.target.closest('[data-edit-name]');
   if(nameTap){
     editingItemKey = nameTap.dataset.editName;
@@ -1245,6 +1286,20 @@ mainEl.addEventListener('click', (e) => {
 
   const addItemBtn = e.target.closest('[data-add-item-btn]');
   if(addItemBtn){ addNewItem(addItemBtn.dataset.addItemBtn); return; }
+});
+
+/* Neon checkbox: pakai event change (bukan click) supaya tidak terhitung dua kali via <label> */
+mainEl.addEventListener('change', (e) => {
+  const checkInput = e.target.closest('input[data-check]');
+  if(!checkInput) return;
+  const [catId, itemId] = checkInput.dataset.check.split(':');
+  const found = findItem(catId, itemId);
+  if(found){
+    found.item.checked = checkInput.checked;
+    if(!found.item.checked){ found.item.qty = ''; found.item.price = ''; }
+    saveCurrent();
+    updateItemRowDOM(catId, itemId);
+  }
 });
 
 mainEl.addEventListener('keydown', (e) => {
@@ -1496,8 +1551,8 @@ function exportPDF(tripNameForPdf, dateIso, catData, tripTypeForPdf, tripDateFor
 const tripTypePrivatBtn = document.getElementById('trip-type-privat');
 const tripTypeOpenBtn = document.getElementById('trip-type-open');
 function updateTripTypeUI(){
-  tripTypePrivatBtn.classList.toggle('active', tripType === 'privat');
-  tripTypeOpenBtn.classList.toggle('active', tripType === 'open');
+  tripTypePrivatBtn.checked = tripType === 'privat';
+  tripTypeOpenBtn.checked = tripType === 'open';
   document.body.setAttribute('data-trip-type', tripType);
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   if(themeMeta) themeMeta.setAttribute('content', '#061417');
